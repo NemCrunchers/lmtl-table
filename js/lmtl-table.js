@@ -163,7 +163,7 @@
 
         //SET UP TABLE
         this.$el.wrap("<div class='lmtl-table-parent'></div>");
-        this.$el.wrap("<div class='lmtl-table'></div>");
+        this.$el.wrap("<div class='lmtl-table-div'></div>");
         this.$div = this.$el.closest('div.lmtl-table-parent');
         if(this.$el.find('tbody').length == 0){
             this.$el.append('<tbody></tbody>');
