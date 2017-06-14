@@ -8,14 +8,14 @@ Features
 - MultiSort Capability based on time applied
 - Pagination
 
-##Requirements
+## Requirements
 - jQuery 2.2.0
 - Bootstrap 3.3.6
 - Font Awesome 4.3.0
 - Kool AJAX
 
-##Usage
-###html
+## Usage
+### html
 ```
 <table id='#testTable'>
         	<thead>
@@ -29,7 +29,7 @@ Features
         	</thead>
         </table>
 ```
-###javascript
+### javascript
 ```
 $(function(){
    
