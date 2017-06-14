@@ -1,0 +1,27 @@
+
+div.lmtl-table{
+    display:block;
+    overflow-y:auto;
+}
+div.lmtl-table-pagination{
+	margin-top: 10px
+}
+div.lmtl-table{
+	margin-top: 5px
+}
+div.lmtl-table{
+
+}
+@media only screen and (max-width : 768px) {
+    .lmtl-table-pagination div.col-sm-6 > ul.pull-right {
+        float: none !important;
+    }
+    .lmtl-table-pagination ul{
+		margin-top: 10px
+	}
+}
+@media only screen and (min-width : 768px) {
+    .lmtl-table-pagination ul{
+		margin-top: 0px
+	}
+}
