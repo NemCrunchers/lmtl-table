@@ -1,7 +1,7 @@
 # LMTL Table
 Designed for Lone Mountain Truck Leasing in Omaha, NE this modular table plugin is intended to be a powerful yet modifiable. It was heavily inspired by wenzhixin's bootstrapTable
 
-##Change Log v0.5
+## Change Log v0.5
 Features
 - Kool AJAX Integration
 - Popover Column Filtering
