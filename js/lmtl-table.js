@@ -169,7 +169,7 @@
             this.$el.append('<tbody></tbody>');
         }
         if(this.options.size !== undefined){
-            this.$el.closest('div.lmtl-table').css('max-height', this.options.size)   
+            this.$el.closest('div.lmtl-table-div').css('max-height', this.options.size)   
         }
         this.$el.addClass(this.options.classes);
         
