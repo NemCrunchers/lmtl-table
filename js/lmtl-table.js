@@ -24,7 +24,8 @@
         pageSize: 10,
         pageSizeOptions : [10, 25, 50, 'All'],
         size: '500px',
-        multiSort:false
+        multiSort:false,
+        stickyHeaders: false
 
     }
     LMTLTable.COLUMN_DEFAULTS = {
@@ -211,7 +212,7 @@
         //SET UP TABLE
         this.$el.wrap("<div class='lmtl-table-parent'></div>");
         this.$el.wrap("<div class='lmtl-table-div'></div>");
-        this.$div = this.$el.closest('div.lmtl-table-parent');
+        this.$parent = this.$el.closest('div.lmtl-table-parent');
         if(this.$el.find('tbody').length == 0){
             this.$el.append('<tbody></tbody>');
         }
@@ -221,17 +222,17 @@
         this.$el.addClass(this.options.classes);
         
 
-        this.$div.append("<div class='col-md-12 lmtl-table-status'><center><b>No records were found</b></center></div>");
+        this.$parent.append("<div class='col-md-12 lmtl-table-status'><center><b>No records were found</b></center></div>");
 
         //PAGINATION
         if(this.options.pagination){
-            this.$div.append("<div class='lmtl-table-pagination'><div class='col-sm-6'><div style='font-size:16px' class='lmtl-table-pagination-status'></div></div><div class='col-sm-6'><ul class='pagination pull-right'></ul></div></div>");
+            this.$parent.append("<div class='lmtl-table-pagination'><div class='col-sm-6'><div style='font-size:16px' class='lmtl-table-pagination-status'></div></div><div class='col-sm-6'><ul class='pagination pull-right'></ul></div></div>");
             var that = this;
-            this.$div.find('.lmtl-table-pagination').on('click', 'li.page-number', function(event){
+            this.$parent.find('.lmtl-table-pagination').on('click', 'li.page-number', function(event){
                 that.options.page = $(this).data('page');
                 that.getData();
             });
-            this.$div.find('.lmtl-table-pagination-status').on('change', '.lmtl-table-pagination-size', function(event){
+            this.$parent.find('.lmtl-table-pagination-status').on('change', '.lmtl-table-pagination-size', function(event){
                 that.options.pageSize = $(this).val();
                 that.options.page = 1;
                 that.getData();
@@ -239,11 +240,11 @@
         }
 
         //TOOLBAR
-        this.$div.prepend('<div class="lmtl-table-toolbar" style="display:none;" ><div class="btn-group pull-right" role="group"></div></div><div class=clearfix></div>')
+        this.$parent.prepend('<div class="lmtl-table-toolbar" style="display:none;" ><div class="btn-group pull-right" role="group"></div></div><div class=clearfix></div>')
         if(this.options.showFilterClear){
-            this.$div.find('.lmtl-table-toolbar').show();
-            this.$div.find('.lmtl-table-toolbar .btn-group').append("<button class='lmtl-table-clear-filter' title='Clear Filter/Sort' type='button' class='btn btn-secondary'><i class='fa fa-eraser'/></button>");
-            this.$div.find('.lmtl-table-clear-filter').click(function(){
+            this.$parent.find('.lmtl-table-toolbar').show();
+            this.$parent.find('.lmtl-table-toolbar .btn-group').append("<button class='lmtl-table-clear-filter' title='Clear Filter/Sort' type='button' class='btn btn-secondary'><i class='fa fa-eraser'/></button>");
+            this.$parent.find('.lmtl-table-clear-filter').click(function(){
                 that.$el.find('.btn-primary.lmtl-filter').each(function(){
                     that.clearColumnFilter($(this).closest('th').data('col-index'))
                 });
@@ -252,6 +253,9 @@
                 })
                 that.getData();
             })
+        }
+        if(this.options.stickyHeaders){
+            this.$el.stickyTableHeaders({scrollableArea: this.$parent.find('.lmtl-table-div')});
         }
     };
 
@@ -304,7 +308,7 @@
                 if(that.options.pagination){
                     var lastPage = Math.ceil(response.total/that.options.pageSize);
                     var page = that.options.page;
-                    var paginationDIV = that.$div.find('.lmtl-table-pagination');
+                    var paginationDIV = that.$parent.find('.lmtl-table-pagination');
                     paginationDIV.find('ul').html('');
                     var pages = Math.floor(that.options.pagesShown/2);
                     if(page>pages+1){
@@ -325,9 +329,9 @@
 
                     
                     if(Object.keys(response.rows).length == 0){
-                        that.$div.find('div.lmtl-table-status').html("<center><b>No records were found</b></center>");
+                        that.$parent.find('div.lmtl-table-status').html("<center><b>No records were found</b></center>");
                     }else{
-                        that.$div.find('div.lmtl-table-status').html("");
+                        that.$parent.find('div.lmtl-table-status').html("");
                     }
                     paginationDIV.find('div.lmtl-table-pagination-status').html('');
                     if(that.options.pageSize != 'All' && Object.keys(response.rows).length > 0){

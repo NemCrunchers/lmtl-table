@@ -4,6 +4,10 @@ div.lmtl-table-div{
     overflow-y:auto;
     overflow-x:auto;
 }
+.lmtl-table thead {
+    
+    background-color: white;
+}
 div.lmtl-table-pagination{
 	margin-top: 10px
 }
