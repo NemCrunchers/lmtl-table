@@ -73,7 +73,7 @@
                     var content = $(content);
                     if(that.options.callback = 'koolajax'){
                         var response = koolajax.callback(eval(that.columns[index].filterCallback+'()'));
-                        for (var i = 0; i < Object.keys(response.rows).length - 1; i++) {
+                        for (var i = 0; i < Object.keys(response.rows).length ; i++) {
                             content.append("<option value='"+response.rows[i]['value']+"'>"+response.rows[i]['label']+"</option>");
                         }
                         content = $('<div>').append($(content).clone()).html();;
@@ -222,7 +222,7 @@
         this.$div.prepend('<div class="lmtl-table-toolbar" style="display:none;" ><div class="btn-group pull-right" role="group"></div></div><div class=clearfix></div>')
         if(this.options.showFilterClear){
             this.$div.find('.lmtl-table-toolbar').show();
-            this.$div.find('.lmtl-table-toolbar .btn-group').append("<button class='lmtl-table-clear-filter' type='button' class='btn btn-secondary'><i class='fa fa-eraser'/></button>");
+            this.$div.find('.lmtl-table-toolbar .btn-group').append("<button class='lmtl-table-clear-filter' title='Clear Filter/Sort' type='button' class='btn btn-secondary'><i class='fa fa-eraser'/></button>");
             this.$div.find('.lmtl-table-clear-filter').click(function(){
                 that.$el.find('.btn-primary.lmtl-filter').each(function(){
                     that.clearColumnFilter($(this).closest('th').data('col-index'))
