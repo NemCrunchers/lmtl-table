@@ -17,7 +17,8 @@
     LMTLTable.DEFAULTS = {
         classes: '',
         koolajax: false,
-        callback: 'koolajax',
+        url:'',
+        callbackType: 'koolajax',
         pagination: false,
         page: 1,
         pageSize: 10,
@@ -289,10 +290,8 @@
 
 
         data = JSON.stringify(data);
-        koolajax.callback(eval(this.options.koolajax+'(data)'), function(response){
-            if(response.success){
-
-                that.$el.find('tbody').html('');
+        var dataProccess = function(response){
+            that.$el.find('tbody').html('');
                 for(var index in response.rows){
                     that.$el.find('tbody').append('<tr '+((that.options.uniqueId !== undefined)?'data-unique-id="'+response.rows[index][that.options.uniqueId]+'"':'')+'></tr>')
                     var page_row = that.$el.find('tbody tr:last');
@@ -341,10 +340,25 @@
                     }
                     paginationDIV.find('div.lmtl-table-pagination-status').append(select+"</select> rows per page");
                 }
-            }else{
-                throwBootboxError(response);
-            }
-        },'selector');
+        }
+        if(that.options.callbackType == 'koolajax'){
+            koolajax.callback(eval(this.options.koolajax+'(data)'), function(response){
+                if(response.success){
+                    dataProccess(response);
+                    
+                }else{
+                    throwBootboxError(response);
+                }
+            },'selector');
+        }else if(['GET', 'POST'].indexOf(that.options.callbackType) > -1){
+            $.ajax({
+              type: that.options.callbackType,
+              url: that.options.url,
+              data: data,
+              success: dataProccess,
+              dataType: 'json'
+            });
+        }
         
     };
 
