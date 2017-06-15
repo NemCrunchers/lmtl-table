@@ -15,8 +15,9 @@
         this.init();
     };
     LMTLTable.DEFAULTS = {
-        classes: 'table table-hover',
+        classes: '',
         koolajax: false,
+        callback: 'koolajax',
         pagination: false,
         page: 1,
         pageSize: 10,
@@ -30,7 +31,12 @@
         order: undefined,
         filter: false,
         filterDistinct: undefined,
-        sort: null
+        sort: null,
+        filterType: 'input'
+    }
+    LMTLTable.FILTER_TEMPLATES = {
+        input: "<input class='form-control filter'></input><select class='form-control operator'><option value='' selected >Contains</option><option value='='  >Equal</option><option value='<'  >Less Than</option><option value='>'>Greater than</option></select>",
+        select: "<select class='form-control filter'><option value=''></option></select>"
     }
 
     LMTLTable.prototype.init = function () {
@@ -62,6 +68,21 @@
             //Add Filters
             if(that.columns[index].filter){
                 var text = $(el).text();
+                var content = LMTLTable.FILTER_TEMPLATES[that.columns[index].filterType];
+                if(that.columns[index].filterType == 'select'){
+                    var content = $(content);
+                    if(that.options.callback = 'koolajax'){
+                        var response = koolajax.callback(eval(that.columns[index].filterCallback+'()'));
+                        for (var i = 0; i < Object.keys(response.rows).length - 1; i++) {
+                            content.append("<option value='"+response.rows[i]['value']+"'>"+response.rows[i]['label']+"</option>");
+                        }
+                        content = $('<div>').append($(content).clone()).html();;
+                    }
+                }
+
+
+
+
                 $(el).append("<button class='btn btn-xs lmtl-filter  pull-right' ><span class='fa fa-filter'></span></button>");
                 $(el).find('button.lmtl-filter').popover({
                     placement: function (context, source) {
@@ -81,21 +102,23 @@
 
                     },
                     title: '<b>Filter '+ text+'</b>',
-                    content: "<input class='form-control filter'></input><select class='form-control operator'><option value='' selected >Contains</option><option value='='  >Equal</option><option value='<'  >Less Than</option><option value='>'>Greater than</option></select>",
+                    content: content,
                     html: true
                 }).on('shown.bs.popover', function(event){
                     var target = event.target;
                     var column = $(event.target).closest('th');
                     column.find('.popover').addClass('lmtl-filter-popover');
-                    var filterControl = column.find('.popover input.filter');
+                    var filterControl = column.find('.popover .filter');
                     var operatorControl = column.find('.popover select.operator');
                     var data = that.columns[column.data('col-index')].filterData;
                     $(target).closest('table').find('.popover').not($(target).siblings('.popover')).siblings('button.lmtl-filter').click();
-                    filterControl.on('keypress', function(event){
-                        if(event.which == 13){
-                            $(target).trigger('click');
-                        }
-                    });
+                    
+                        filterControl.on('keypress', function(event){
+                            if(event.which == 13){
+                                event.preventDefault();
+                                $(target).trigger('click');
+                            }
+                        });
                     if(data !== undefined){
                         filterControl.val(data.value);
                         operatorControl.val(data.operator);
@@ -103,7 +126,7 @@
                     filterControl.focus();
                     that.$el.trigger('lmtl.table.filter.shown', [that, that.columns[index], filterControl]);
 
-                    column.find('.popover input.filter, .popover select.operator').change(function(){
+                    column.find('.popover .filter, .popover select.operator').change(function(){
                         that.options.page =1;
                     })
 
@@ -111,12 +134,16 @@
 
                     //console.log(event);
                         var column = $(event.target).closest('th');
-                        var filterControl = column.find('.popover input.filter');
+                        var filterControl = column.find('.popover .filter');
                         var operatorControl = column.find('.popover select.operator');
                         if(filterControl.val() == ''){  // clear filter
                             that.clearColumnFilter(column.data('col-index'));
                         }else{
-                            that.columns[column.data('col-index')].filterData = {operator:operatorControl.val(),value:filterControl.val()};
+                            var data = {operator:operatorControl.val(),value:filterControl.val()};
+                            if(that.columns[column.data('col-index')].filterType == 'select'){
+                                data.operator = '=';
+                            }
+                            that.columns[column.data('col-index')].filterData = data;
                             column.find('button.lmtl-filter').addClass('btn-primary');    
                         }
                         //that.options.page =1;
@@ -174,7 +201,7 @@
         this.$el.addClass(this.options.classes);
         
 
-
+        this.$div.append("<div class='col-md-12 lmtl-table-status'><center><b>No records were found</b></center></div>");
 
         //PAGINATION
         if(this.options.pagination){
@@ -278,17 +305,22 @@
                         paginationDIV.find('ul').append("<li class='page-number' data-page='"+lastPage+"'><a href='javascript:void(0)'>Last</a></li>");
                     }
 
-
-                    $('div.lmtl-table-pagination-status').html('');
-                    if(that.options.pageSize != 'All'){
-                        $('div.lmtl-table-pagination-status').append('Showing row '+((page-1)*that.options.pageSize+1)+'-'+page*that.options.pageSize+' of '+lastPage*that.options.pageSize+ ' rows');
+                    
+                    if(Object.keys(response.rows).length == 0){
+                        that.$div.find('div.lmtl-table-status').html("<center><b>No records were found</b></center>");
+                    }else{
+                        that.$div.find('div.lmtl-table-status').html("");
+                    }
+                    paginationDIV.find('div.lmtl-table-pagination-status').html('');
+                    if(that.options.pageSize != 'All' && Object.keys(response.rows).length > 0){
+                        paginationDIV.find('div.lmtl-table-pagination-status').append('Showing row '+((page-1)*that.options.pageSize+1)+'-'+((page-1)*that.options.pageSize+Object.keys(response.rows).length)+' of '+response.total+ ' rows');
                     }
                     var select = "&nbsp<select style='width:70px;display: inline;' class='form-control lmtl-table-pagination-size'>";
                     for(var i = 0; i<that.options.pageSizeOptions.length; i++){
                         var pageOption = that.options.pageSizeOptions[i];
                         select += ("<option value='"+pageOption+"' "+(that.options.pageSize == pageOption?'selected':'')+">"+pageOption+"</option>");
                     }
-                    $('div.lmtl-table-pagination-status').append(select+"</select> rows per page");
+                    paginationDIV.find('div.lmtl-table-pagination-status').append(select+"</select> rows per page");
                 }
             }else{
                 throwBootboxError(response);
