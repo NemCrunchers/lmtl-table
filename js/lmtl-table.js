@@ -64,24 +64,16 @@
         this.$el.find('th').each(function(index, el){
             $(el).data('col-index', index);
             that.columns[index] = $.extend({}, LMTLTable.COLUMN_DEFAULTS, $(el).data(), {$el: $(el)} );
-
-            //Add Filters
-            if(that.columns[index].filter){
+            var initFilter = function(response){
                 var text = $(el).text();
                 var content = LMTLTable.FILTER_TEMPLATES[that.columns[index].filterType];
                 if(that.columns[index].filterType == 'select'){
-                    var content = $(content);
-                    if(that.options.callback = 'koolajax'){
-                        var response = koolajax.callback(eval(that.columns[index].filterCallback+'()'));
-                        for (var i = 0; i < Object.keys(response.rows).length ; i++) {
-                            content.append("<option value='"+response.rows[i]['value']+"'>"+response.rows[i]['label']+"</option>");
-                        }
-                        content = $('<div>').append($(content).clone()).html();;
+                    content = $(content);
+                    for (var i = 0; i < Object.keys(response.rows).length ; i++) {
+                        content.append("<option value='"+response.rows[i]['value']+"'>"+response.rows[i]['label']+"</option>");
                     }
+                    content = $('<div>').append($(content).clone()).html();
                 }
-
-
-
 
                 $(el).append("<button class='btn btn-xs lmtl-filter  pull-right' ><span class='fa fa-filter'></span></button>");
                 $(el).find('button.lmtl-filter').popover({
@@ -149,6 +141,28 @@
                         //that.options.page =1;
                         that.getData();
                 });
+            };
+            //Add Filters
+            if(that.columns[index].filter){
+                if(that.columns[index].filterType == 'select'){
+                    if(that.columns[index].filterCallbackType == 'koolajax'){
+                        var response = koolajax.callback(eval(that.columns[index].filterCallback+'()'), initFilter);
+                        
+                    }else if(['GET', 'POST'].indexOf(that.columns[index].filterCallbackType) > -1){
+                        $.ajax({
+                          type: that.columns[index].filterCallbackType,
+                          url: that.columns[index].filterCallback,
+                          data: {},
+                          success: initFilter,
+                          dataType: 'json'
+                        });
+                    }
+                }else if(that.columns[index].filterType == 'input'){
+                        initFilter();
+                }
+
+
+
             }
             if(that.columns[index].sortable){
                 $(el).append("&nbsp<i  class='fa sort fa-unsorted' style='cursor: pointer;' aria-hidden='true'></i>");
@@ -174,6 +188,11 @@
                         that.getData();
                     }
                 });
+                $(el).mousedown(function(e){ 
+                    if($(e.target).is('th')){
+                            e.preventDefault(); 
+                    }
+                })
             }
             
         });
