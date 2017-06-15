@@ -2,15 +2,13 @@
 div.lmtl-table-div{
     display:block;
     overflow-y:auto;
+    overflow-x:auto;
 }
 div.lmtl-table-pagination{
 	margin-top: 10px
 }
-div.lmtl-table{
+div.lmtl-table-div{
 	margin-top: 5px
-}
-div.lmtl-table{
-
 }
 @media only screen and (max-width : 768px) {
     .lmtl-table-pagination div.col-sm-6 > ul.pull-right {
