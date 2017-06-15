@@ -3,6 +3,9 @@
  * version: 0.1
  */
 (function ($) {
+    var bootstrap_enabled = (typeof $().modal == 'function');
+    var bootstrapSelect_enabled = (typeof $().selectpicker == 'function');
+
     'use strict';
    
     var LMTLTable = function (el, options) {
@@ -25,7 +28,8 @@
         pageSizeOptions : [10, 25, 50, 'All'],
         size: '500px',
         multiSort:false,
-        stickyHeaders: false
+        stickyHeaders: false,
+        cache: false
 
     }
     LMTLTable.COLUMN_DEFAULTS = {
@@ -34,7 +38,8 @@
         filter: false,
         filterDistinct: undefined,
         sort: null,
-        filterType: 'input'
+        filterType: 'input',
+        cache: true
     }
     LMTLTable.FILTER_TEMPLATES = {
         input: "<input class='form-control filter'></input><select class='form-control operator'><option value='' selected >Contains</option><option value='='  >Equal</option><option value='<'  >Less Than</option><option value='>'>Greater than</option></select>",
@@ -42,8 +47,12 @@
     }
 
     LMTLTable.prototype.init = function () {
+
+        
+
         this.initColumns();
         this.initTable();
+
         this.getData();
     };
     LMTLTable.prototype.clearColumnFilter = function(index){
@@ -58,124 +67,178 @@
         column.sort = null;
         column.$el.find('i.sort').removeClass('fa-sort-asc').removeClass('fa-sort-desc').addClass('fa-unsorted');
     }
-    LMTLTable.prototype.initColumns = function () {
+    LMTLTable.prototype.initFilter = function(index, callback=null){
         var that = this;
-        this.columns = [];
-        //if($el)
-        //this.$el.append('<tbody></tbody>');
-        this.$el.find('th').each(function(index, el){
-            $(el).data('col-index', index);
-            that.columns[index] = $.extend({}, LMTLTable.COLUMN_DEFAULTS, $(el).data(), {$el: $(el)} );
-            var initFilter = function(response){
-                var text = $(el).text();
-                var content = LMTLTable.FILTER_TEMPLATES[that.columns[index].filterType];
-                if(that.columns[index].filterType == 'select'){
-                    content = $(content);
-                    for (var i = 0; i < Object.keys(response.rows).length ; i++) {
-                        content.append("<option value='"+response.rows[i]['value']+"'>"+response.rows[i]['label']+"</option>");
-                    }
-                    content = $('<div>').append($(content).clone()).html();
-                }
-
-                $(el).append("<button class='btn btn-xs lmtl-filter  pull-right' ><span class='fa fa-filter'></span></button>");
-                $(el).find('button.lmtl-filter').popover({
-                    placement: function (context, source) {
-                        var position = $(source).position();
-
-                        if ($( document ).width()-position.left < 300) {
-                            if(position.left < 300){
-                                if($( document ).height()-position.top < 300){
-                                    return "top";
-                                }
-                                return "bottom";
-                            }
-                            return "left";
+        var el = this.columns[index].$el[0];
+        if(callback == null){
+            callback = function(response){
+                    var text = $(el).text();
+                    var content = LMTLTable.FILTER_TEMPLATES[that.columns[index].filterType];
+                    if(that.columns[index].filterType == 'select'){
+                        content = $(content);
+                        for (var i = 0; i < Object.keys(response.rows).length ; i++) {
+                            content.append("<option value='"+response.rows[i]['value']+"'>"+response.rows[i]['label']+"</option>");
                         }
-
-                        return "right";
-
-                    },
-                    title: '<b>Filter '+ text+'</b>',
-                    content: content,
-                    html: true
-                }).on('shown.bs.popover', function(event){
-                    var target = event.target;
-                    var column = $(event.target).closest('th');
-                    column.find('.popover').addClass('lmtl-filter-popover');
-                    var filterControl = column.find('.popover .filter');
-                    var operatorControl = column.find('.popover select.operator');
-                    var data = that.columns[column.data('col-index')].filterData;
-                    $(target).closest('table').find('.popover').not($(target).siblings('.popover')).siblings('button.lmtl-filter').click();
-                    
-                        filterControl.on('keypress', function(event){
-                            if(event.which == 13){
-                                event.preventDefault();
-                                $(target).trigger('click');
-                            }
-                        });
-                    if(data !== undefined){
-                        filterControl.val(data.value);
-                        operatorControl.val(data.operator);
+                        content = $('<div>').append($(content).clone()).html();
                     }
-                    filterControl.focus();
-                    that.$el.trigger('lmtl.table.filter.shown', [that, that.columns[index], filterControl]);
 
-                    column.find('.popover .filter, .popover select.operator').change(function(){
-                        that.options.page =1;
-                    })
+                    $(el).append("<button class='btn btn-xs lmtl-filter  pull-right' ><span class='fa fa-filter'></span></button>");
 
-                }).on('hide.bs.popover', function(event){
+                    if(that.columns[index].filter && that.columns[index].filterData !== undefined){
+                        that.columns[index].$el.find('button.lmtl-filter').addClass('btn-primary');
+                    }
+                    $(el).find('button.lmtl-filter').popover({
+                        placement: function (context, source) {
+                            var position = $(source).position();
 
-                    //console.log(event);
+                            if ($( document ).width()-position.left < 300) {
+                                if(position.left < 300){
+                                    if($( document ).height()-position.top < 300){
+                                        return "top";
+                                    }
+                                    return "bottom";
+                                }
+                                return "left";
+                            }
+
+                            return "right";
+
+                        },
+                        title: '<b>Filter '+ text+'</b>',
+                        content: content,
+                        html: true
+                    }).on('shown.bs.popover', function(event){
+
+                        var target = event.target;
                         var column = $(event.target).closest('th');
+                        column.find('.popover').addClass('lmtl-filter-popover');
                         var filterControl = column.find('.popover .filter');
                         var operatorControl = column.find('.popover select.operator');
-                        if(filterControl.val() == ''){  // clear filter
-                            that.clearColumnFilter(column.data('col-index'));
-                        }else{
-                            var data = {operator:operatorControl.val(),value:filterControl.val()};
-                            if(that.columns[column.data('col-index')].filterType == 'select'){
-                                data.operator = '=';
-                            }
-                            that.columns[column.data('col-index')].filterData = data;
-                            column.find('button.lmtl-filter').addClass('btn-primary');    
-                        }
-                        //that.options.page =1;
-                        that.getData();
-                });
-            };
-            //Add Filters
-            if(that.columns[index].filter){
-                if(that.columns[index].filterType == 'select'){
-                    if(that.columns[index].filterCallbackType == 'koolajax'){
-                        var response = koolajax.callback(eval(that.columns[index].filterCallback+'()'), initFilter);
+                        var data = that.columns[column.data('col-index')].filterData;
+                        var popover = $(target).siblings('.popover');
+
+
+
+                        $(target).closest('table').find('.popover').not(popover).siblings('button.lmtl-filter').click();
                         
-                    }else if(['GET', 'POST'].indexOf(that.columns[index].filterCallbackType) > -1){
-                        $.ajax({
-                          type: that.columns[index].filterCallbackType,
-                          url: that.columns[index].filterCallback,
-                          data: {},
-                          success: initFilter,
-                          dataType: 'json'
-                        });
-                    }
-                }else if(that.columns[index].filterType == 'input'){
-                        initFilter();
+                            filterControl.on('keypress', function(event){
+                                if(event.which == 13){
+                                    event.preventDefault();
+                                    $(target).trigger('click');
+                                }
+                            });
+                        if(data !== undefined){
+                            filterControl.val(data.value);
+                            operatorControl.val(data.operator);
+                        }
+                        filterControl.focus();
+                        that.$el.trigger('lmtl.table.filter.shown', [that, that.columns[index], filterControl]);
+
+                        column.find('.popover .filter, .popover select.operator').change(function(){
+                            that.options.page =1;
+                        })
+
+                    }).on('hide.bs.popover', function(event){
+
+                        //console.log(event);
+                            var column = $(event.target).closest('th');
+                            var filterControl = column.find('.popover .filter');
+                            var operatorControl = column.find('.popover select.operator');
+                            if(filterControl.val() == ''){  // clear filter
+                                that.clearColumnFilter(column.data('col-index'));
+                            }else{
+                                var data = {operator:operatorControl.val(),value:filterControl.val()};
+                                if(that.columns[column.data('col-index')].filterType == 'select'){
+                                    data.operator = '=';
+                                }
+                                that.columns[column.data('col-index')].filterData = data;
+                                column.find('button.lmtl-filter').addClass('btn-primary');    
+                            }
+                            //that.options.page =1;
+                            that.getData();
+                    });
+                
+                };
+        }
+            //Add Filters
+            if(this.columns[index].filter){
+                if(this.columns[index].filterType == 'select'){
+                        if(this.columns[index].filterCallbackType == 'koolajax'){
+                            var response = koolajax.callback(eval(this.columns[index].filterCallback+'()'), callback);
+                            
+                        }else if(['GET', 'POST'].indexOf(this.columns[index].filterCallbackType) > -1){
+                            $.ajax({
+                              type: this.columns[index].filterCallbackType,
+                              url: this.columns[index].filterCallback,
+                              data: {},
+                              success: callback,
+                              dataType: 'json'
+                            });
+                        }
+                }else if(this.columns[index].filterType == 'input'){
+                        callback();
                 }
 
 
 
             }
+    }
+    LMTLTable.prototype.destroyFilter = function(index){
+        this.columns[index].$el.find('button.lmtl-filter').remove();
+        
+    }
+    LMTLTable.prototype.refreshFilter = function(index, callback){
+        var that = this;
+        this.initFilter(index,function(response){
+            var content = LMTLTable.FILTER_TEMPLATES[that.columns[index].filterType];
+            if(that.columns[index].filterType == 'select'){
+                    content = $(content);
+                    for (var i = 0; i < Object.keys(response.rows).length ; i++) {
+                        content.append("<option value='"+response.rows[i]['value']+"'>"+response.rows[i]['label']+"</option>");
+                    }
+                    content = $('<div>').append($(content).clone()).html();
+                    var temp =that.columns[index].$el.find('button.lmtl-filter').data('bs.popover');
+                    temp.options.content = content;
+                    that.columns[index].$el.find('button.lmtl-filter').data('bs.popover', temp).options;
+                }
+
+        });
+        
+        
+    }
+    LMTLTable.prototype.initColumns = function () {
+        var that = this;
+        this.columns = [];
+        if(this.options.cache){
+          var old_columns = JSON.parse(sessionStorage.getItem('lmtl-table-columns-'+that.options.sessionId));
+        }
+        //if($el)
+        //this.$el.append('<tbody></tbody>');
+        this.$el.find('th').each(function(index, el){
+            $(el).data('col-index', index);
+            
+            if(that.options.cache && old_columns !== null){
+              that.columns[index] = old_columns[index];
+              that.columns[index] = $.extend({}, LMTLTable.COLUMN_DEFAULTS, $(el).data(), old_columns[index], {$el: $(el)} );
+            }else{
+              that.columns[index] = $.extend({}, LMTLTable.COLUMN_DEFAULTS, $(el).data(), {$el: $(el)} );
+            }
+            
+
+            that.initFilter(index);
             if(that.columns[index].sortable){
                 $(el).append("&nbsp<i  class='fa sort fa-unsorted' style='cursor: pointer;' aria-hidden='true'></i>");
                 $(el).css('cursor', 'pointer');
+                $(el).find('i.sort').removeClass('fa-unsorted').addClass('fa-'+(that.columns[index].sort == undefined? 'unsorted': 'sort-'+that.columns[index].sort.sortOrder))
                 $(el).click(function(event){
                     if($(event.target).is('i.sort') || $(event.target).is('th')){
                         var column = $(el);
                         var data = that.columns[column.data('col-index')].sort;
                         if(that.options.multiSort == false){
-                            $('thead th').not(column).find('i.sort:not(.fa-unsorted)').each(function(){
-                                that.clearColumnSort($(this).closest('th').data('col-index'));
+                            $(that.columns).each(function(index, col){
+                                if(col.$el.not(column).length>0 && col.find('i.sort:not(.fa-unsorted)').length>0){
+                                    that.clearColumnSort(index);
+                                }
                             })
                         }
                         if(data == null){
@@ -202,6 +265,9 @@
     };
     LMTLTable.prototype.initTable = function () {
         var that = this;
+
+
+
         //POPOVER DISMISS
         $('html').on('click', function(e) {
           if (!$(e.target).parents().is('.lmtl-filter-popover') && !($(e.target).is('button.lmtl-filter') || $(e.target).parents().is('button.lmtl-filter'))) {
@@ -256,6 +322,7 @@
         }
         if(this.options.stickyHeaders){
             this.$el.stickyTableHeaders({scrollableArea: this.$parent.find('.lmtl-table-div')});
+            this.$el.find('.tableFloatingHeader i.sort,.tableFloatingHeader button.lmtl-filter').remove();
         }
     };
 
@@ -294,6 +361,9 @@
 
 
         data = JSON.stringify(data);
+        if(this.options.cache){
+            sessionStorage.setItem('lmtl-table-columns-'+that.options.sessionId, JSON.stringify(this.columns));
+        }
         var dataProccess = function(response){
             that.$el.find('tbody').html('');
                 for(var index in response.rows){
@@ -363,6 +433,12 @@
               dataType: 'json'
             });
         }
+        for (index in this.columns) { 
+            if(!this.columns[index].cache){
+                var that = this;
+                this.refreshFilter(index);
+            }
+        }
         
     };
 
@@ -375,7 +451,7 @@ $.fn.lmtlTable = function (option) {
         this.each(function () {
             var $this = $(this);
             var data = $this.data('lmtl.table');
-            var options = $.extend({}, LMTLTable.DEFAULTS, $this.data(),
+            var options = $.extend({}, LMTLTable.DEFAULTS, {sessionId: $this.attr('id')}, $this.data(),
                     typeof option === 'object' && option);
 
             if (!data) {

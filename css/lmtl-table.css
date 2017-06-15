@@ -5,8 +5,17 @@ div.lmtl-table-div{
     overflow-x:auto;
 }
 .lmtl-table thead {
-    
+
     background-color: white;
+}
+.lmtl-table > thead > tr > th{
+    vertical-align: top;
+}
+.lmtl-table > thead > tr > th button.lmtl-filter{
+    padding-top: 1px;
+    padding-bottom: 1px;
+    padding-left: 5px;
+    padding-right: 5px;
 }
 div.lmtl-table-pagination{
 	margin-top: 10px
