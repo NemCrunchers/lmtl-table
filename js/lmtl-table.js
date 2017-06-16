@@ -5,6 +5,7 @@
 (function ($) {
     var bootstrap_enabled = (typeof $().modal == 'function');
     var bootstrapSelect_enabled = (typeof $().selectpicker == 'function');
+    var lmtlTableCache = [];
 
     'use strict';
    
@@ -29,8 +30,15 @@
         size: '500px',
         multiSort:false,
         stickyHeaders: false,
-        cache: false
-
+        cache: false,
+        methods:{
+            preRequest : function(lmtlTable,data){
+                return data;
+            }, 
+            postRequest : function(lmtlTable,response){
+                return response;
+            }
+        }
     }
     LMTLTable.COLUMN_DEFAULTS = {
         sortable: false,
@@ -48,7 +56,7 @@
 
     LMTLTable.prototype.init = function () {
 
-        
+        this.initCache();
 
         this.initColumns();
         this.initTable();
@@ -206,11 +214,39 @@
         
         
     }
+    LMTLTable.prototype.setCache = function(data){
+        if(this.options.cache == 'session'){
+            sessionStorage.setItem('lmtl-table-columns-'+this.options.cacheId, JSON.stringify(data));
+        }else if(this.options.cache == 'local'){
+            localStorage.setItem('lmtl-table-columns-'+this.options.cacheId, JSON.stringify(data));
+        }else if(this.options.cache == 'page'){
+            lmtlTableCache['lmtl-table-columns-'+this.options.cacheId] = data;
+        }
+
+    }
+    LMTLTable.prototype.getCache = function(){
+        if(this.options.cache == 'session'){
+            return JSON.parse(sessionStorage.getItem('lmtl-table-columns-'+this.options.cacheId));
+        }else if(this.options.cache == 'local'){
+            return JSON.parse(localStorage.getItem('lmtl-table-columns-'+this.options.cacheId));
+        }else if(this.options.cache == 'page'){
+            return lmtlTableCache['lmtl-table-columns-'+this.options.cacheId];
+        }
+    }
+    LMTLTable.prototype.initCache = function(){
+
+        if(this.options.cache == 'page'){
+            var cache = lmtlTableCache['lmtl-table-columns-'+that.options.cacheId];
+            if(cache == undefined){
+                lmtlTableCache['lmtl-table-columns-'+that.options.cacheId] = null;
+            }
+        }
+    }
     LMTLTable.prototype.initColumns = function () {
         var that = this;
         this.columns = [];
         if(this.options.cache){
-          var old_columns = JSON.parse(sessionStorage.getItem('lmtl-table-columns-'+that.options.sessionId));
+          var old_columns = this.getCache();
         }
         //if($el)
         //this.$el.append('<tbody></tbody>');
@@ -267,7 +303,6 @@
         var that = this;
 
 
-
         //POPOVER DISMISS
         $('html').on('click', function(e) {
           if (!$(e.target).parents().is('.lmtl-filter-popover') && !($(e.target).is('button.lmtl-filter') || $(e.target).parents().is('button.lmtl-filter'))) {
@@ -276,7 +311,7 @@
         });
 
         //SET UP TABLE
-        this.$el.wrap("<div class='lmtl-table-parent'></div>");
+        this.$el.wrap("<div class='lmtl-table-parent' id=lmtl-table#'"+this.$el.attr('id')+"'></div>");
         this.$el.wrap("<div class='lmtl-table-div'></div>");
         this.$parent = this.$el.closest('div.lmtl-table-parent');
         if(this.$el.find('tbody').length == 0){
@@ -324,22 +359,55 @@
             this.$el.stickyTableHeaders({scrollableArea: this.$parent.find('.lmtl-table-div')});
             this.$el.find('.tableFloatingHeader i.sort,.tableFloatingHeader button.lmtl-filter').remove();
         }
-    };
+        if(this.options.showPrintButton){
+            this.$parent.parents().addClass('lmtl-table-print-parents');
+            this.$parent.find('.lmtl-table-toolbar .btn-group').append("<button class='lmtl-table-print' title='Print Table' type='button' class='btn btn-secondary'><i class='fa fa-print'/></button>");
+            
+            this.$parent.find('button.lmtl-table-print').click(function(){
+                that.$parent.find('.lmtl-table-div').addClass('lmtl-table-print');
+                $('html').addClass('lmtl-table-print');
+                window.print();
+            })
+            if (window.matchMedia) {
+                var mediaQueryList = window.matchMedia('print');
+                mediaQueryList.addListener(function(mql) {
+                    if (!mql.matches) {
+                        $('html.lmtl-table-print').removeClass('lmtl-table-print')
+                        $('.lmtl-table-div.lmtl-table-print').removeClass('lmtl-table-print')
+                    }
+                });
+            }
 
-    LMTLTable.prototype.getData = function () {
+        }
+    };
+    LMTLTable.prototype.method = function(callback, data, index=0){
         var that = this;
-        var filter = {};
-        var sort = [];
+        if(typeof data == 'function'){
+            this.options.methods[callback] = data;
+        }else {
+            //if(typeof data == 'array'){
+                var passback = this.options.methods[callback].apply(this, data);
+            //}
+            if(passback == undefined){
+                    passback = data[index];
+            }
+            return passback;
+        }
+
+    }
+    LMTLTable.prototype.getData = function (userData = {}) {
+        var that = this;
+        var data = {filter:{}, multiSort:[]};
         //build Filters
         for(var index in this.columns){
             var col = this.columns[index];
             if(col.filterData !== undefined){
-                eval('filter.'+col.field+' = '+ JSON.stringify(col.filterData));
+                eval('data.filter.'+col.field+' = '+ JSON.stringify(col.filterData));
             }
             if(col.sortable && col.sort !== null){
-                sort.push(col.sort);
+                data.multiSort.push(col.sort);
             }
-            sort.sort(function(a, b){
+            data.multiSort.sort(function(a, b){
               var aTime = a.sortDate;
               var bTime = b.sortDate; 
               return ((aTime < bTime) ? -1 : ((aTime > bTime) ? 1 : 0));
@@ -349,20 +417,18 @@
 
 
 
-        var data = {
-            filter: filter,
-            multiSort: sort,
-        };
         if(that.options.pagination && that.options.pageSize != 'All'){
 
             data.offset= (that.options.page-1)*that.options.pageSize;
             data.limit= that.options.pageSize;
         }
+        data = $.extend({}, data, userData);
+        this.method('preRequest', [data]);
 
 
         data = JSON.stringify(data);
-        if(this.options.cache){
-            sessionStorage.setItem('lmtl-table-columns-'+that.options.sessionId, JSON.stringify(this.columns));
+        if(this.options.cache !== false){
+            this.setCache(this.columns);
         }
         var dataProccess = function(response){
             that.$el.find('tbody').html('');
@@ -418,6 +484,7 @@
         if(that.options.callbackType == 'koolajax'){
             koolajax.callback(eval(this.options.koolajax+'(data)'), function(response){
                 if(response.success){
+                    response = that.method('postRequest',[response]);
                     dataProccess(response);
                     
                 }else{
@@ -429,7 +496,10 @@
               type: that.options.callbackType,
               url: that.options.url,
               data: data,
-              success: dataProccess,
+              success: function(response){
+                response = that.method('postRequest', [response]);
+                dataProccess(response);
+              },
               dataType: 'json'
             });
         }
@@ -450,12 +520,12 @@ $.fn.lmtlTable = function (option) {
 
         this.each(function () {
             var $this = $(this);
-            var data = $this.data('lmtl.table');
-            var options = $.extend({}, LMTLTable.DEFAULTS, {sessionId: $this.attr('id')}, $this.data(),
+            var data = $this.data('lmtlTable');
+            var options = $.extend({}, LMTLTable.DEFAULTS, {cacheId: $this.attr('id')}, $this.data(),
                     typeof option === 'object' && option);
 
             if (!data) {
-                $this.data('lmtl.table', (data = new LMTLTable(this, options)));
+                $this.data('lmtlTable', (data = new LMTLTable(this, options)));
             }
         });
 
