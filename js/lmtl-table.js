@@ -27,7 +27,7 @@
         page: 1,
         pageSize: 10,
         pageSizeOptions : [10, 25, 50, 'All'],
-        size: '500px',
+        size: '',
         multiSort:false,
         stickyHeaders: false,
         cache: false,
@@ -38,7 +38,8 @@
             postRequest : function(lmtlTable,response){
                 return response;
             }
-        }
+        },
+        columnData: {}
     }
     LMTLTable.COLUMN_DEFAULTS = {
         sortable: false,
@@ -47,7 +48,10 @@
         filterDistinct: undefined,
         sort: null,
         filterType: 'input',
-        cache: true
+        cache: true,
+        editable: false,
+        editableData: {},
+        koolajax: false
     }
     LMTLTable.FILTER_TEMPLATES = {
         input: "<input class='form-control filter'></input><select class='form-control operator'><option value='' selected >Contains</option><option value='='  >Equal</option><option value='<'  >Less Than</option><option value='>'>Greater than</option></select>",
@@ -85,7 +89,7 @@
                     if(that.columns[index].filterType == 'select'){
                         content = $(content);
                         for (var i = 0; i < Object.keys(response.rows).length ; i++) {
-                            content.append("<option value='"+response.rows[i]['value']+"'>"+response.rows[i]['label']+"</option>");
+                            content.append("<option value='"+response.rows[i]['value']+"'>"+response.rows[i]['text']+"</option>");
                         }
                         content = $('<div>').append($(content).clone()).html();
                     }
@@ -202,7 +206,7 @@
             if(that.columns[index].filterType == 'select'){
                     content = $(content);
                     for (var i = 0; i < Object.keys(response.rows).length ; i++) {
-                        content.append("<option value='"+response.rows[i]['value']+"'>"+response.rows[i]['label']+"</option>");
+                        content.append("<option value='"+response.rows[i]['value']+"'>"+response.rows[i]['text']+"</option>");
                     }
                     content = $('<div>').append($(content).clone()).html();
                     var temp =that.columns[index].$el.find('button.lmtl-filter').data('bs.popover');
@@ -253,12 +257,16 @@
         this.$el.find('th').each(function(index, el){
             $(el).data('col-index', index);
             
-            if(that.options.cache && old_columns !== null){
-              that.columns[index] = old_columns[index];
-              that.columns[index] = $.extend({}, LMTLTable.COLUMN_DEFAULTS, $(el).data(), old_columns[index], {$el: $(el)} );
-            }else{
-              that.columns[index] = $.extend({}, LMTLTable.COLUMN_DEFAULTS, $(el).data(), {$el: $(el)} );
+            var colData = {};
+            if( typeof that.options.columnData[index] == 'object'){
+                colData = that.options.columnData[index];
             }
+
+            var oldCol = {};
+            if(that.options.cache && old_columns !== null){
+                oldCol = old_columns[index];
+            }
+              that.columns[index] = $.extend({}, LMTLTable.COLUMN_DEFAULTS, $(el).data(), colData, oldCol, {$el: $(el)} );
             
 
             that.initFilter(index);
@@ -412,6 +420,9 @@
               var bTime = b.sortDate; 
               return ((aTime < bTime) ? -1 : ((aTime > bTime) ? 1 : 0));
             });
+            if(typeof that.options.multiSort == 'function'){
+                data.multiSort.sort(multiSort);
+            }
         }
 
 
@@ -438,6 +449,44 @@
                     $(that.columns).each(function(col_index, col){
                         var classes = col.$el.attr('class');
                         page_row.append('<td class='+classes+'>'+response.rows[index][col.field]+'</td>');
+                        if(col.editable){
+                            page_row.find('td:last').wrapInner('<a></a>');
+                            var options = {
+                                type: 'text',
+                                pk: response.rows[index][that.options.uniqueId],
+                                name: col.field,
+                                title: 'Edit: '+$(that.$el.find('thead th')[col_index]).clone().children().remove().end().text() // get text not in child tags
+                            };
+                            if(that.options.koolajax){
+
+                                options.url =  function(res){
+                                    res = JSON.stringify(res);
+                                    koolajax.callback(eval(col.editableData.koolajax+'(res)'), function(response){
+                                        if(response.success){
+                                            
+                                        }else{
+                                            
+                                        }
+                                    },'selector');
+                                }
+                                if(col.editableData.type == 'select'){
+                                    options.source = function(){
+                                        var response = koolajax.callback(eval(col.editableData.sourceKoolajax + '()'));
+                                        if(response.success){
+                                            if(typeof response.rows == 'object'){
+                                                response.rows.length = Object.keys(response.rows).length;
+                                                response.rows = Array.prototype.slice.call(response.rows,0); // convert to array
+                                            }
+                                            return response.rows;
+                                        }else{
+                                            
+                                        }
+                                    }
+                                }
+                            }
+                            page_row.find('td:last a').editable($.extend({}, options, col.editableData));
+                        }
+                        
                     })
 
                 }
