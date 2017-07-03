@@ -448,6 +448,9 @@
                     var page_row = that.$el.find('tbody tr:last');
                     $(that.columns).each(function(col_index, col){
                         var classes = col.$el.attr('class');
+                        if(classes == undefined){
+                            classes = '';
+                        }
                         page_row.append('<td class='+classes+'>'+response.rows[index][col.field]+'</td>');
                         if(col.editable){
                             page_row.find('td:last').wrapInner('<a></a>');
