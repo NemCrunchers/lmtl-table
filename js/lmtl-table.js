@@ -453,6 +453,12 @@
                         }
                         page_row.append('<td class='+classes+'>'+response.rows[index][col.field]+'</td>');
                         if(col.editable){
+                            var datetimepicker = col.editableData.type == 'datetimepicker';
+
+                            if(datetimepicker){
+                                col.editableData.type = 'text';
+                            }
+
                             page_row.find('td:last').wrapInner('<a></a>');
                             var options = {
                                 type: 'text',
@@ -485,7 +491,16 @@
                                             
                                         }
                                     }
+                                    
                                 }
+
+                            }
+                            if(datetimepicker){
+                                page_row.find('td:last a').on('shown', function(e, editable) {
+                                    editable.input.$input.datetimepicker({
+                                        format: col.editableData.format
+                                    });
+                                });
                             }
                             page_row.find('td:last a').editable($.extend({}, options, col.editableData));
                         }
@@ -561,6 +576,31 @@
                 this.refreshFilter(index);
             }
         }
+            if(that.options.callbackType == 'koolajax'){
+                koolajax.callback(eval(that.options.koolajax+'(data)'), function(response){
+                    if(response.success){
+                        response = that.method('postRequest',[response]);
+                        dataProccess(response);
+                        resolve(response);
+                    }else{
+                        throwBootboxError(response);
+                        reject(response);
+                    }
+                },'selector');
+            }else if(['GET', 'POST'].indexOf(that.options.callbackType) > -1){
+                $.ajax({
+                  type: that.options.callbackType,
+                  url: that.options.url,
+                  data: data,
+                  success: function(response){
+                    response = that.method('postRequest', [response]);
+                    dataProccess(response);
+                    resolve(response);
+                  },
+                  dataType: 'json'
+                });
+            }
+        });
         
     };
 
