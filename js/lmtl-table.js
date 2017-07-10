@@ -65,6 +65,8 @@
         this.initColumns();
         this.initTable();
 
+        this.$el.trigger('lmtl.table.shown');
+
         this.getData();
     };
     LMTLTable.prototype.clearColumnFilter = function(index){
@@ -280,7 +282,7 @@
                         var data = that.columns[column.data('col-index')].sort;
                         if(that.options.multiSort == false){
                             $(that.columns).each(function(index, col){
-                                if(col.$el.not(column).length>0 && col.find('i.sort:not(.fa-unsorted)').length>0){
+                                if(col.$el.not(column).length>0 && col.$el.find('i.sort:not(.fa-unsorted)').length>0){
                                     that.clearColumnSort(index);
                                 }
                             })
@@ -305,7 +307,7 @@
             }
             
         });
-        console.log(this.columns);
+        //console.log(this.columns);
     };
     LMTLTable.prototype.initTable = function () {
         var that = this;
@@ -368,6 +370,7 @@
             this.$el.find('.tableFloatingHeader i.sort,.tableFloatingHeader button.lmtl-filter').remove();
         }
         if(this.options.showPrintButton){
+            this.$parent.find('.lmtl-table-toolbar').show();
             this.$parent.parents().addClass('lmtl-table-print-parents');
             this.$parent.find('.lmtl-table-toolbar .btn-group').append("<button class='lmtl-table-print' title='Print Table' type='button' class='btn btn-secondary'><i class='fa fa-print'/></button>");
             
@@ -385,6 +388,37 @@
                     }
                 });
             }
+
+        }
+
+        if(this.options.showExportButton){
+            this.$parent.find('.lmtl-table-toolbar').show();
+            this.$parent.find('.lmtl-table-toolbar .btn-group').append("<button class='lmtl-table-export' title='Export Table' type='button' class='btn btn-secondary'><i class='fa fa-table'/></button>");
+            
+            this.$parent.find('button.lmtl-table-export').click(function(){
+                var data = [];
+
+                var arrGetter = function(){
+                  return '"'+$(this).text().trim()+'"';
+                };
+                var csv = that.$el.find('th:not(.lmtl-no-export)').map(arrGetter).get().join(',')+"\n";
+                that.$el.find('tbody tr').each(function(index, el){
+                    csv += $(el).find('td:not(.lmtl-no-export)').map(arrGetter).get().join(',')+"\n";
+                })
+                var today = new Date();
+                var date = today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate();
+                var filename = 'export';
+                //console.log(csv);
+                if(that.options.exportFilename){
+                    filename = that.options.exportFilename;
+                }
+
+                var hiddenElement = document.createElement('a');
+                hiddenElement.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+                hiddenElement.target = '_blank';
+                hiddenElement.download = filename+'_'+date+'.csv';
+                hiddenElement.click();
+            })
 
         }
     };
@@ -406,7 +440,10 @@
     LMTLTable.prototype.getData = function (userData = {}) {
         var that = this;
         var data = {filter:{}, multiSort:[]};
+        this.$el.find('tbody').html('');
+        this.$parent.find('.lmtl-table-status').html('<center class="lmtl-table-loading">Loading Data...</center>');
         //build Filters
+        this.$parent.find('.lmtl-table-pagination').hide();
         for(var index in this.columns){
             var col = this.columns[index];
             if(col.filterData !== undefined){
@@ -442,6 +479,7 @@
             this.setCache(this.columns);
         }
         var dataProccess = function(response){
+            that.$parent.find('.lmtl-table-pagination').show();
             that.$el.find('tbody').html('');
                 for(var index in response.rows){
                     that.$el.find('tbody').append('<tr '+((that.options.uniqueId !== undefined)?'data-unique-id="'+response.rows[index][that.options.uniqueId]+'"':'')+'></tr>')
@@ -451,7 +489,7 @@
                         if(classes == undefined){
                             classes = '';
                         }
-                        page_row.append('<td class='+classes+'>'+response.rows[index][col.field]+'</td>');
+                        page_row.append('<td class="'+classes+'">'+response.rows[index][col.field]+'</td>');
                         if(col.editable){
                             var datetimepicker = col.editableData.type == 'datetimepicker';
 
@@ -491,7 +529,7 @@
                                             
                                         }
                                     }
-                                    
+                                    //options.source = [{"value":"1","text":"DRT"},{"value":"2","text":"Hoovestol"},{"value":"3","text":"Eagle Express Lines"},{"value":"4","text":"Eagle Atlantic"},{"value":"5","text":"Lone Mountain Truck Leasing"},{"value":"6","text":"Cresco Capital"},{"value":"7","text":"Red Rock Capital"},{"value":"8","text":"Red Rock Trailer"}];
                                 }
 
                             }
@@ -503,6 +541,10 @@
                                 });
                             }
                             page_row.find('td:last a').editable($.extend({}, options, col.editableData));
+
+                            if(datetimepicker){
+                                col.editableData.type = 'datetimepicker';
+                            }
                         }
                         
                     })
@@ -548,34 +590,15 @@
                     paginationDIV.find('div.lmtl-table-pagination-status').append(select+"</select> rows per page");
                 }
         }
-        if(that.options.callbackType == 'koolajax'){
-            koolajax.callback(eval(this.options.koolajax+'(data)'), function(response){
-                if(response.success){
-                    response = that.method('postRequest',[response]);
-                    dataProccess(response);
-                    
-                }else{
-                    throwBootboxError(response);
-                }
-            },'selector');
-        }else if(['GET', 'POST'].indexOf(that.options.callbackType) > -1){
-            $.ajax({
-              type: that.options.callbackType,
-              url: that.options.url,
-              data: data,
-              success: function(response){
-                response = that.method('postRequest', [response]);
-                dataProccess(response);
-              },
-              dataType: 'json'
-            });
-        }
+
         for (index in this.columns) { 
             if(!this.columns[index].cache){
                 var that = this;
                 this.refreshFilter(index);
             }
         }
+        return new Promise(/* executor*/ function (resolve, reject) {
+
             if(that.options.callbackType == 'koolajax'){
                 koolajax.callback(eval(that.options.koolajax+'(data)'), function(response){
                     if(response.success){

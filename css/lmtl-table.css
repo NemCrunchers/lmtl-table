@@ -17,23 +17,23 @@ div.lmtl-table-div{
     padding-right: 5px;
 }
 div.lmtl-table-pagination{
-	margin-top: 10px
+    margin-top: 10px
 }
 div.lmtl-table-div{
-	margin-top: 5px
+    margin-top: 5px
 }
 @media only screen and (max-width : 768px) {
     .lmtl-table-pagination div.col-sm-6 > ul.pull-right {
         float: none !important;
     }
     .lmtl-table-pagination ul{
-		margin-top: 10px
-	}
+        margin-top: 10px
+    }
 }
 @media only screen and (min-width : 768px) {
     .lmtl-table-pagination ul{
-		margin-top: 0px
-	}
+        margin-top: 0px
+    }
 }
 
 .lmtl-table-toolbar button{
@@ -98,5 +98,11 @@ div.lmtl-table-div tbody td a.editable{
     }
     div.lmtl-table-print::-webkit-scrollbar-thumb{
         visibility: hidden;
+    }
+    div.lmtl-table-print td.lmtl-no-print, div.lmtl-table-print th.lmtl-no-print {
+        display:none !important;
+    }
+    td.lmtl-no-print * {
+        display:none !important;
     }
 }
