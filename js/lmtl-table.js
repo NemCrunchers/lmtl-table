@@ -315,7 +315,7 @@
 
         //POPOVER DISMISS
         $('html').on('click', function(e) {
-          if (!$(e.target).parents().is('.lmtl-filter-popover') && !($(e.target).is('button.lmtl-filter') || $(e.target).parents().is('button.lmtl-filter'))) {
+          if ($('.lmtl-filter-popover').length>0 && !$(e.target).parents().is('.lmtl-filter-popover') && !($(e.target).is('button.lmtl-filter') || $(e.target).parents().is('button.lmtl-filter'))) {
             $('.lmtl-filter-popover').siblings('button.lmtl-filter').click();
           }
         });
@@ -626,8 +626,6 @@
         });
         
     };
-
-
 
 $.fn.lmtlTable = function (option) {
         var value,
